@@ -1,5 +1,10 @@
 version: 2
 updates:
+  # ---------------------------------------------------------------------------
+  # Ferramentas de CI (requirements-ci.txt) — todas as atualizações permitidas
+  # apache-airflow bloqueado em minor/patch: versão deve ser alinhada
+  # com a imagem Docker em lakehouse-infra
+  # ---------------------------------------------------------------------------
   - package-ecosystem: pip
     directory: /
     schedule:
@@ -12,6 +17,9 @@ updates:
       - dependencies
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      - dependency-name: "apache-airflow"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
     groups:
       ci-tools:
         patterns:
@@ -22,6 +30,9 @@ updates:
           - "nbstripout"
           - "requests-mock"
 
+  # ---------------------------------------------------------------------------
+  # GitHub Actions — todas as atualizações permitidas
+  # ---------------------------------------------------------------------------
   - package-ecosystem: github-actions
     directory: /
     schedule:
