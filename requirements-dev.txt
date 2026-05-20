@@ -1,0 +1,6 @@
+apache-airflow==2.9.1
+pytest==8.3.3
+pytest-mock==3.14.0
+requests-mock==1.12.1
+ruff==0.4.10
+nbstripout==0.7.1

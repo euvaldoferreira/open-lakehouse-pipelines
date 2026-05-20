@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, "feat/**", "fix/**"]
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Lint — ruff em dags/ e plugins/
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install ruff
+      - run: ruff check dags/ plugins/
+
+  # ---------------------------------------------------------------------------
+  # 2. Validação de DAGs — sintaxe e compilação Python
+  # ---------------------------------------------------------------------------
+  validate-dags:
+    name: Validate DAGs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Syntax check (py_compile)
+        run: |
+          find dags -name "*.py" | while read f; do
+            python -m py_compile "$f" && echo "OK: $f"
+          done
+
+  # ---------------------------------------------------------------------------
+  # 3. Testes unitários dos plugins
+  # ---------------------------------------------------------------------------
+  test-plugins:
+    name: Test Plugins
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install \
+            apache-airflow==2.9.1 \
+            pytest pytest-mock requests-mock \
+            --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.9.1/constraints-3.11.txt"
+
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+
+  # ---------------------------------------------------------------------------
+  # 4. Notebooks — verifica que nenhum output foi commitado
+  # ---------------------------------------------------------------------------
+  check-notebooks:
+    name: Check Notebook Outputs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install nbstripout
+
+      - name: Check no outputs committed
+        run: |
+          fail=0
+          find notebooks tutorials -name "*.ipynb" 2>/dev/null | while read nb; do
+            if ! nbstripout --check "$nb"; then
+              echo "FAIL: $nb contém outputs — execute nbstripout antes do commit"
+              fail=1
+            else
+              echo "OK: $nb"
+            fi
+          done
+          exit $fail

@@ -1,0 +1,24 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy to Lakehouse Server
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Pull latest pipelines no servidor
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          script: |
+            git -C "$PIPELINES_REPO_PATH" pull --ff-only
+            echo "Deploy concluído em $(date)"
+        env:
+          PIPELINES_REPO_PATH: ${{ secrets.PIPELINES_REPO_PATH }}

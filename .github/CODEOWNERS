@@ -1,0 +1,8 @@
+# Engenheiros de dados são responsáveis por todo o repositório
+*                   @euvaldoferreira
+
+# Plugins e operadores — revisão obrigatória do tech lead
+/plugins/           @euvaldoferreira
+
+# Notebooks de produção — revisão antes de deploy
+/notebooks/         @euvaldoferreira
