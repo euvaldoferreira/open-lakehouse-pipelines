@@ -108,6 +108,9 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # 5. Auditoria de dependências — CVEs conhecidos (pip-audit)
+  #    Escopo: requirements-ci.txt (ferramentas de CI/CD).
+  #    O Airflow e seus providers são auditados em lakehouse-infra,
+  #    pois são dependências de runtime de infra, não de código.
   # ---------------------------------------------------------------------------
   security-audit:
     name: Security Audit (pip-audit)
@@ -122,7 +125,7 @@ jobs:
       - run: pip install pip-audit
 
       - name: Audit dependencies
-        run: pip-audit -r requirements-dev.txt
+        run: pip-audit -r requirements-ci.txt
 
   # ---------------------------------------------------------------------------
   # 6. SAST — análise estática de segurança (bandit)
