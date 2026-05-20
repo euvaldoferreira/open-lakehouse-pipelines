@@ -19,8 +19,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
 
-      - run: pip install ruff
+      - run: pip install -r requirements-ci.txt
       - run: ruff check dags/ plugins/
 
   # ---------------------------------------------------------------------------
@@ -58,10 +59,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install \
-            apache-airflow==2.9.1 \
-            pytest pytest-mock requests-mock pytest-cov \
+          pip install apache-airflow==2.9.1 \
             --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.9.1/constraints-3.11.txt"
+          pip install -r requirements-ci.txt
 
       - name: Run tests with coverage
         run: |
@@ -90,8 +90,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
 
-      - run: pip install nbstripout
+      - run: pip install -r requirements-ci.txt
 
       - name: Check no outputs committed
         run: |
@@ -121,8 +122,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
 
-      - run: pip install pip-audit
+      - run: pip install -r requirements-ci.txt
 
       - name: Audit dependencies
         run: pip-audit -r requirements-ci.txt
@@ -141,8 +143,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
 
-      - run: pip install bandit
+      - run: pip install -r requirements-ci.txt
 
       - name: Run bandit
         run: bandit -r plugins/ dags/ -ll -c pyproject.toml
