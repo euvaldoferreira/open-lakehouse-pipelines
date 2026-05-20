@@ -45,6 +45,12 @@ df_bronze = spark.read.parquet(bronze_path)
 df_silver = (
     df_bronze
     .withColumn("din_instante", F.col("din_instante").cast("timestamp"))
+    .withColumn("val_carga", F.col("val_carga").cast("double"))
+    .withColumn("val_gerhidraulica", F.col("val_gerhidraulica").cast("double"))
+    .withColumn("val_gertermica", F.col("val_gertermica").cast("double"))
+    .withColumn("val_gereolica", F.col("val_gereolica").cast("double"))
+    .withColumn("val_gersolar", F.col("val_gersolar").cast("double"))
+    .withColumn("val_intercambio", F.col("val_intercambio").cast("double"))
     .withColumn("data_referencia", F.to_date(F.col("din_instante")))
     .withColumn("processed_at", F.current_timestamp())
     .select(
