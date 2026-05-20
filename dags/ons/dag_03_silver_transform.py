@@ -28,12 +28,20 @@ DAG_ID = "ons_dag_03_silver_transform"
 BRONZE_DAG_ID = "ons_dag_02_bronze_transform"
 
 from lakehouse_utils import (
-    spark_conf,
     SPARK_PACKAGES,
-    write_pipeline_audit as _write_audit,
+    spark_conf,
+)
+from lakehouse_utils import (
     get_checkpoint_date as _get_checkpoint_date,
-    set_checkpoint_date as _set_checkpoint_date,
+)
+from lakehouse_utils import (
     get_partitions_to_process as _get_partitions_to_process,
+)
+from lakehouse_utils import (
+    set_checkpoint_date as _set_checkpoint_date,
+)
+from lakehouse_utils import (
+    write_pipeline_audit as _write_audit,
 )
 
 

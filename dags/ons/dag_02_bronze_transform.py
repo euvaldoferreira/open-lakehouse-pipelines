@@ -33,16 +33,25 @@ DAG_ID = "ons_dag_02_bronze_transform"
 RAW_DAG_ID = "ons_dag_01_raw_ingestion"
 
 from lakehouse_utils import (
-    get_s3_client as _get_s3_client,
-    write_pipeline_audit as _write_audit,
     get_checkpoint_date as _get_checkpoint_date,
-    set_checkpoint_date as _set_checkpoint_date,
+)
+from lakehouse_utils import (
     get_partitions_to_process as _get_partitions_to_process,
+)
+from lakehouse_utils import (
+    get_s3_client as _get_s3_client,
+)
+from lakehouse_utils import (
+    set_checkpoint_date as _set_checkpoint_date,
+)
+from lakehouse_utils import (
+    write_pipeline_audit as _write_audit,
 )
 
 
 def transform_to_bronze(**context) -> None:
     import io
+
     import pandas as pd
 
     years = _get_partitions_to_process(DATASET, RAW_DAG_ID, DAG_ID)

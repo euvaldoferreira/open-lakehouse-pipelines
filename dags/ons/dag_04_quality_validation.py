@@ -38,16 +38,25 @@ DAG_ID = "ons_dag_04_quality_validation"
 SILVER_DAG_ID = "ons_dag_03_silver_transform"
 
 from lakehouse_utils import (
-    get_s3_client as _get_s3_client,
-    write_dq_result as _write_dq_result,
     get_checkpoint_date as _get_checkpoint_date,
-    set_checkpoint_date as _set_checkpoint_date,
+)
+from lakehouse_utils import (
     get_partitions_to_process as _get_partitions_to_process,
+)
+from lakehouse_utils import (
+    get_s3_client as _get_s3_client,
+)
+from lakehouse_utils import (
+    set_checkpoint_date as _set_checkpoint_date,
+)
+from lakehouse_utils import (
+    write_dq_result as _write_dq_result,
 )
 
 
 def run_quality_checks(**context) -> dict:
     import io
+
     import pandas as pd
 
     # Run checks for every year that has been silver-processed

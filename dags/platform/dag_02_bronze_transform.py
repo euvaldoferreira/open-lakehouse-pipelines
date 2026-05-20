@@ -8,8 +8,8 @@ from __future__ import annotations
 from datetime import timedelta
 
 from airflow import DAG
-from airflow.operators.python import PythonOperator
 from airflow.operators.empty import EmptyOperator
+from airflow.operators.python import PythonOperator
 from airflow.utils.dates import days_ago
 
 DEFAULT_ARGS = {
@@ -23,9 +23,10 @@ DEFAULT_ARGS = {
 
 def transform_raw_to_bronze(**context) -> None:
     """Read raw JSON from MinIO and write cleaned Parquet to bronze bucket."""
-    import os
-    import json
     import io
+    import json
+    import os
+
     import boto3
     import pandas as pd
     from botocore.config import Config

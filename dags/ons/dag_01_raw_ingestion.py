@@ -36,18 +36,25 @@ DEFAULT_ARGS = {
 DAG_ID = "ons_dag_01_raw_ingestion"
 
 from lakehouse_utils import (
-    get_s3_client as _get_s3_client,
-    write_pipeline_audit as _write_audit,
     get_checkpoint_date as _get_checkpoint_date,
+)
+from lakehouse_utils import (
+    get_s3_client as _get_s3_client,
+)
+from lakehouse_utils import (
     set_checkpoint_date as _set_checkpoint_date,
+)
+from lakehouse_utils import (
+    write_pipeline_audit as _write_audit,
 )
 
 
 def download_all_pending(**context) -> None:
     """Download every year that has new data or has never been ingested."""
     import io
-    import requests
+
     import pandas as pd
+    import requests
 
     current_year = date.today().year
     s3 = _get_s3_client()
