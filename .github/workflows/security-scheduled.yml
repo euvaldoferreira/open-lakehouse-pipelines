@@ -1,0 +1,65 @@
+name: Scheduled Security Scan
+
+on:
+  schedule:
+    - cron: "0 8 * * 1"  # toda segunda-feira às 08h (UTC)
+  workflow_dispatch:       # permite execução manual
+
+jobs:
+  audit:
+    name: Dependency Audit (pip-audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - run: pip install -r requirements-ci.txt
+
+      - name: Audit CI dependencies
+        run: pip-audit -r requirements-ci.txt
+
+      - name: Open issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `[Security] CVE detectado em requirements-ci.txt — ${new Date().toISOString().slice(0, 10)}`;
+            const body = `O scan semanal de dependências detectou uma ou mais vulnerabilidades.\n\n` +
+                         `**Workflow:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\n` +
+                         `Verifique o log do workflow e atualize as versões afetadas em \`requirements-ci.txt\`.`;
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: ['security']
+            });
+            const alreadyOpen = issues.some(i => i.title.startsWith('[Security] CVE detectado'));
+            if (!alreadyOpen) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['security']
+              });
+            }
+
+  sast:
+    name: SAST (bandit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - run: pip install -r requirements-ci.txt
+
+      - name: Run bandit
+        run: bandit -r plugins/ dags/ -ll -c pyproject.toml
