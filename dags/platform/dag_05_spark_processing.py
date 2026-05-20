@@ -12,7 +12,7 @@ from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
 from airflow.utils.dates import days_ago
-from lakehouse_utils import spark_conf, SPARK_PACKAGES
+from lakehouse_utils import SPARK_PACKAGES, spark_conf
 
 DEFAULT_ARGS = {
     "owner": "data-engineering",

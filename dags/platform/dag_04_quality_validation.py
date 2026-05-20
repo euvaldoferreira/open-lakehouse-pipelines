@@ -8,8 +8,8 @@ from __future__ import annotations
 from datetime import timedelta
 
 from airflow import DAG
-from airflow.operators.python import PythonOperator, BranchPythonOperator
 from airflow.operators.empty import EmptyOperator
+from airflow.operators.python import BranchPythonOperator, PythonOperator
 from airflow.utils.dates import days_ago
 
 DEFAULT_ARGS = {
@@ -22,10 +22,11 @@ DEFAULT_ARGS = {
 
 def check_bronze_quality(**context) -> dict:
     """Validate bronze layer: null checks, range checks, row count."""
+    import io
     import os
+
     import boto3
     import pandas as pd
-    import io
     from botocore.config import Config
 
     execution_date = context["ds"]
