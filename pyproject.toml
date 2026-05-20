@@ -11,3 +11,15 @@ ignore = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["plugins"]
+
+[tool.bandit]
+# Falsos positivos comuns em projetos de data engineering:
+# B101 — assert em testes e validações de dados
+# B603 — subprocess sem shell=True (submissão de jobs Spark)
+# B607 — caminho parcial em start_process (comandos externos de processamento)
+skips = [
+    "B101",  # assert — comum em validações de dados
+    "B603",  # subprocess sem shell=True — submissão de jobs Spark
+    "B607",  # caminho parcial em start_process — comandos externos de processamento
+    "B608",  # spark.sql(f"...") — parâmetros vêm do Airflow, não de input de usuário
+]

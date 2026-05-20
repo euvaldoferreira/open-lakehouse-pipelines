@@ -43,10 +43,10 @@ jobs:
           done
 
   # ---------------------------------------------------------------------------
-  # 3. Testes unitários dos plugins
+  # 3. Testes unitários + cobertura mínima de plugins/
   # ---------------------------------------------------------------------------
   test-plugins:
-    name: Test Plugins
+    name: Test Plugins (coverage ≥ 70%)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,11 +60,23 @@ jobs:
         run: |
           pip install \
             apache-airflow==2.9.1 \
-            pytest pytest-mock requests-mock \
+            pytest pytest-mock requests-mock pytest-cov \
             --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.9.1/constraints-3.11.txt"
 
-      - name: Run tests
-        run: pytest tests/ -v --tb=short
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ -v --tb=short \
+            --cov=operators \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --cov-fail-under=70
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage.xml
 
   # ---------------------------------------------------------------------------
   # 4. Notebooks — verifica que nenhum output foi commitado
@@ -93,3 +105,41 @@ jobs:
             fi
           done
           exit $fail
+
+  # ---------------------------------------------------------------------------
+  # 5. Auditoria de dependências — CVEs conhecidos (pip-audit)
+  # ---------------------------------------------------------------------------
+  security-audit:
+    name: Security Audit (pip-audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install pip-audit
+
+      - name: Audit dependencies
+        run: pip-audit -r requirements-dev.txt
+
+  # ---------------------------------------------------------------------------
+  # 6. SAST — análise estática de segurança (bandit)
+  #    Threshold: somente severidade MEDIUM e acima (-ll)
+  #    Falsos positivos comuns em data engineering já configurados em pyproject.toml
+  # ---------------------------------------------------------------------------
+  sast:
+    name: SAST (bandit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install bandit
+
+      - name: Run bandit
+        run: bandit -r plugins/ dags/ -ll -c pyproject.toml
