@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import timedelta
+from datetime import date, timedelta
 from typing import Any
 
 # ---------------------------------------------------------------------------
