@@ -77,7 +77,7 @@ def download_all_pending(**context) -> None:
             max_date = str(df["din_instante"].max().date())
             row_count = len(df)
 
-            cp = _get_checkpoint_date(DATASET, DAG_ID, year)
+            cp = _get_checkpoint_date(DATASET, DAG_ID, str(year))
             if cp is not None and str(cp) == max_date:
                 print(f"Year {year}: no new data (max_date={max_date}), skipping")
                 continue
@@ -88,7 +88,7 @@ def download_all_pending(**context) -> None:
                 ContentType="application/octet-stream",
                 Metadata={"source": "ons-opendata", "dataset": DATASET, "year": str(year)},
             )
-            _set_checkpoint_date(DATASET, DAG_ID, year, max_date, row_count)
+            _set_checkpoint_date(DATASET, DAG_ID, str(year), max_date, row_count)
             processed.append(year)
             print(f"Year {year}: {row_count:,} rows, max_date={max_date} → uploaded")
 
