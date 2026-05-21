@@ -76,6 +76,15 @@ def transform_to_bronze(**context) -> None:
         df["data_referencia"] = df["din_instante"].dt.date.astype(str)
         df["ingested_at"] = pd.Timestamp.now()
 
+        # ONS source occasionally encodes numeric fields as strings (e.g. empty strings for nulls)
+        numeric_cols = [
+            "val_carga", "val_gerhidraulica", "val_gertermica",
+            "val_gereolica", "val_gersolar", "val_intercambio",
+        ]
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
         # Spark rejects TIMESTAMP(NANOS) — coerce all datetime columns to microseconds
         for col in df.select_dtypes(include=["datetime64"]).columns:
             df[col] = df[col].astype("datetime64[us]")
