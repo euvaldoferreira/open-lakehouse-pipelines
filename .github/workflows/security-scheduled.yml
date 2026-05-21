@@ -24,7 +24,7 @@ jobs:
 
       - name: Open issue on failure
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const title = `[Security] CVE detectado em requirements-ci.txt — ${new Date().toISOString().slice(0, 10)}`;
