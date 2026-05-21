@@ -65,7 +65,7 @@ def run_gold_processing(**context) -> None:
             name=f"ons-gold-{year}-{ds}",
             application_args=["--year", str(year)],
         )
-        hook.submit("/opt/airflow/dags/ons/spark_jobs/ons_gold_processing.py")
+        hook.submit("/opt/airflow/dags/ons/balanco_energia_subsistema_ho/spark_jobs/ons_gold_processing.py")
 
         silver_cp = _get_checkpoint_date(DATASET, SILVER_DAG_ID, year)
         _set_checkpoint_date(DATASET, DAG_ID, year, silver_cp)

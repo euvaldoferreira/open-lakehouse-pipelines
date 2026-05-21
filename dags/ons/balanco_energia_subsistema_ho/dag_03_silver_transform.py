@@ -66,7 +66,7 @@ def run_silver_transform(**context) -> None:
             name=f"ons-silver-{year}-{ds}",
             application_args=["--year", str(year)],
         )
-        hook.submit("/opt/airflow/dags/ons/spark_jobs/ons_silver_transform.py")
+        hook.submit("/opt/airflow/dags/ons/balanco_energia_subsistema_ho/spark_jobs/ons_silver_transform.py")
 
         bronze_cp = _get_checkpoint_date(DATASET, BRONZE_DAG_ID, year)
         _set_checkpoint_date(DATASET, DAG_ID, year, bronze_cp)
