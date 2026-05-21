@@ -115,6 +115,7 @@ def run_quality_checks(**context) -> dict:
                              {"subsystems": list(actual), "year": year})
 
         # 4. Range check
+        df["val_carga"] = pd.to_numeric(df["val_carga"], errors="coerce")
         out_of_range = int(((df["val_carga"] < 0) | (df["val_carga"] > MAX_LOAD_MW)).sum())
         if out_of_range > 0:
             _write_dq_result(dag_id, run_date, "bronze", "range_check", "warning", out_of_range,
