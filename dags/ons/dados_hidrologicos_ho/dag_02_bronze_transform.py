@@ -1,0 +1,176 @@
+"""
+ONS DAG 02 - Bronze Layer Transformation (Multi-month)
+
+Reads every month where raw checkpoint is newer than bronze checkpoint,
+enriches the Parquet, and writes to the bronze bucket.
+"""
+
+from __future__ import annotations
+
+from datetime import timedelta
+
+from airflow import DAG
+from airflow.operators.empty import EmptyOperator
+from airflow.operators.python import PythonOperator, ShortCircuitOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow.utils.dates import days_ago
+
+DATASET = "dados_hidrologicos_ho"
+REQUIRED_COLS = {
+    "id_reservatorio", "nom_reservatorio", "din_instante",
+    "id_subsistema", "nom_subsistema", "nom_bacia", "tip_reservatorio",
+    "val_vazaoafluente", "val_vazaodefluente", "val_vazaoturbinada",
+    "val_vazaovertida", "val_volumeutil", "val_nivelmontante",
+}
+
+DEFAULT_ARGS = {
+    "owner": "data-engineering",
+    "depends_on_past": False,
+    "retries": 2,
+    "retry_delay": timedelta(minutes=5),
+}
+
+DAG_ID = "ons_hidrologicos_dag_02_bronze_transform"
+RAW_DAG_ID = "ons_hidrologicos_dag_01_raw_ingestion"
+
+from lakehouse_utils import (
+    get_checkpoint_date as _get_checkpoint_date,
+)
+from lakehouse_utils import (
+    get_partitions_to_process as _get_partitions_to_process,
+)
+from lakehouse_utils import (
+    get_s3_client as _get_s3_client,
+)
+from lakehouse_utils import (
+    set_checkpoint_date as _set_checkpoint_date,
+)
+from lakehouse_utils import (
+    write_pipeline_audit as _write_audit,
+)
+
+
+def transform_to_bronze(**context) -> None:
+    import io
+
+    import pandas as pd
+
+    yearmonths = _get_partitions_to_process(DATASET, RAW_DAG_ID, DAG_ID)
+    if not yearmonths:
+        print("No yearmonths pending for bronze transform")
+        context["task_instance"].xcom_push(key="processed_yearmonths", value=[])
+        return
+
+    s3 = _get_s3_client()
+    total_rows = 0
+    processed = []
+
+    for yearmonth in yearmonths:
+        year, month = yearmonth.split("-")
+        filename = f"DADOS_HIDROLOGICOS_HO_{year}_{month}.parquet"
+        raw_key = f"ons/{DATASET}/yearmonth={yearmonth}/{filename}"
+        response = s3.get_object(Bucket="raw", Key=raw_key)
+        df = pd.read_parquet(io.BytesIO(response["Body"].read()))
+
+        missing = REQUIRED_COLS - set(df.columns)
+        if missing:
+            raise ValueError(f"Yearmonth {yearmonth}: missing columns {missing}")
+
+        df["data_referencia"] = df["din_instante"].dt.date.astype(str)
+        df["ingested_at"] = pd.Timestamp.now()
+
+        # ONS source occasionally encodes numeric fields as strings (empty strings for nulls)
+        numeric_cols = [
+            "val_nivelmontante", "val_niveljusante", "val_volumeutil",
+            "val_vazaoafluente", "val_vazaodefluente", "val_vazaoturbinada",
+            "val_vazaovertida", "val_vazaooutrasestruturas",
+            "val_vazaotransferida", "val_vazaovertidanaoturbinavel",
+            "cod_usina",
+        ]
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
+        # Spark rejects TIMESTAMP(NANOS) — coerce all datetime columns to microseconds
+        for col in df.select_dtypes(include=["datetime64"]).columns:
+            df[col] = df[col].astype("datetime64[us]")
+
+        buffer = io.BytesIO()
+        df.to_parquet(buffer, index=False, engine="pyarrow",
+                      coerce_timestamps="us", allow_truncated_timestamps=True)
+        buffer.seek(0)
+
+        bronze_key = f"ons/{DATASET}/yearmonth={yearmonth}/data.parquet"
+        s3.put_object(Bucket="bronze", Key=bronze_key, Body=buffer.getvalue())
+
+        raw_cp = _get_checkpoint_date(DATASET, RAW_DAG_ID, yearmonth)
+        _set_checkpoint_date(DATASET, DAG_ID, yearmonth, raw_cp, len(df))
+        total_rows += len(df)
+        processed.append(yearmonth)
+        print(f"Bronze yearmonth {yearmonth}: {len(df):,} rows")
+
+    context["task_instance"].xcom_push(key="processed_yearmonths", value=processed)
+    context["task_instance"].xcom_push(key="total_rows", value=total_rows)
+    print(f"Bronze complete. Yearmonths: {processed}, total rows: {total_rows:,}")
+
+
+def _gate_trigger(**context) -> bool:
+    if not context["dag_run"].conf.get("trigger_next", True):
+        return False
+    processed = context["task_instance"].xcom_pull(task_ids="transform_to_bronze", key="processed_yearmonths")
+    return bool(processed)
+
+
+def write_pipeline_audit(**context) -> None:
+    processed = context["task_instance"].xcom_pull(task_ids="transform_to_bronze", key="processed_yearmonths") or []
+    total_rows = context["task_instance"].xcom_pull(task_ids="transform_to_bronze", key="total_rows") or 0
+    _write_audit(
+        dag_id=context["dag"].dag_id,
+        run_id=context["run_id"],
+        layer="bronze",
+        status="success" if processed else "skipped",
+        row_count=total_rows,
+        notes=f"dataset={DATASET} yearmonths={processed}",
+    )
+
+
+with DAG(
+    dag_id=DAG_ID,
+    description="[ONS] Multi-month bronze enrichment of dados_hidrologicos_ho",
+    default_args=DEFAULT_ARGS,
+    schedule_interval=None,
+    start_date=days_ago(1),
+    catchup=False,
+    tags=["ons", "bronze", "transform", "hidrologico", "reservatorio"],
+    max_active_runs=1,
+) as dag:
+
+    start = EmptyOperator(task_id="start")
+
+    transform = PythonOperator(
+        task_id="transform_to_bronze",
+        python_callable=transform_to_bronze,
+    )
+
+    audit = PythonOperator(
+        task_id="write_pipeline_audit",
+        python_callable=write_pipeline_audit,
+        trigger_rule="all_done",
+    )
+
+    gate = ShortCircuitOperator(
+        task_id="gate_trigger",
+        python_callable=_gate_trigger,
+    )
+
+    trigger_silver = TriggerDagRunOperator(
+        task_id="trigger_silver_transform",
+        trigger_dag_id="ons_hidrologicos_dag_03_silver_transform",
+        wait_for_completion=False,
+    )
+
+    end = EmptyOperator(task_id="end", trigger_rule="none_failed_min_one_success")
+
+    start >> transform >> [audit, gate]
+    gate >> trigger_silver
+    [audit, trigger_silver] >> end
